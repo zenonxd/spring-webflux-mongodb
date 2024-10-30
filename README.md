@@ -199,3 +199,45 @@ projeto).
 Iniciando o projeto, a ideia é que a Collection de user criada esteja mapeada com os dados do TestConfig.
 
 ![img_13.png](img_13.png)
+
+## Incluindo dependência e alterando repositories
+
+### Dependência
+
+Para modificar de MVC para Webflux, precisamos adicionar algumas dependências:
+
+O spring data mongodb, virará reactive.
+
+E o springweb, virará webflux.
+
+Ao trocar essas dependências, terá alguns erros de código no projeto que iremos aos poucos adequar.
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-mongodb-reactive</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-webflux</artifactId>
+</dependency>
+```
+
+### Repositories
+
+Atualmente nossos Repositories extendem do MongoRepository, será ReactiveMongoRepository, onde agora trabalharemos
+com Mono e Flux <T>.
+
+### ControllerException
+
+![img_14.png](img_14.png)
+
+Lembra do servlet do MVC? Não trabalharemos mais com ele e sim com ServerHttpRequest.
+
+![img_15.png](img_15.png)
+
+### Seeding dados com Reactive MongoDB
+
+### Controller
+
+### Service
