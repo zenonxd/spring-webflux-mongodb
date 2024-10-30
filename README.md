@@ -238,6 +238,50 @@ Lembra do servlet do MVC? Não trabalharemos mais com ele e sim com ServerHttpRe
 
 ### Seeding dados com Reactive MongoDB
 
+Quando trabalhamos com programação reativa no Spring Webflux, teremos dois objetos que representarão streams: do tipo 
+Mono (0 ou 1 elemento) e Flux (0 ou N elementos).
+
+❗Lembrar sempre do subscribe após realocar em uma variável.
+
+deleteAll:
+-
+Seu retorno é do tipo mono e void! Mas esse void é encapsulado por uma stream (mono), ou seja, 0 ou 1 objeto somente.
+
+A ideia é obtermos esse retorno de Mono, e dar um subscribe (inscrever neste evento).
+
+![img_16.png](img_16.png)
+
+### Após alteração
+
+![img_17.png](img_17.png)
+
+saveAll
+-
+
+![img_18.png](img_18.png)
+
+Seu retorno é do tipo Flux e um Iterable.
+
+### Após alteração
+
+![img_19.png](img_19.png)
+
+insertPosts
+-
+
+Mesma coisa, é um saveAll. Retornará um flux do tipo iterable (Post).
+
+saveUser
+-
+
+Save retornará Mono do tipo User.
+
+![img_21.png](img_21.png)
+
+![img_20.png](img_20.png)
+
+
+
 ### Controller
 
 ### Service
