@@ -280,6 +280,20 @@ Save retornará Mono do tipo User.
 
 ![img_20.png](img_20.png)
 
+### Relacioanamento de entidades (User e Post)
+
+Na nossa entidade User, temos uma referência a Post, possuindo uma lista do mesmo. Visto que um User pode ter vários
+Posts.
+
+![img_22.png](img_22.png)
+
+No Webflux não é muito comum usarmos esse @DBRef.
+
+A ideia é que a referência seja feita de maneira manual. Nós iremos REMOVER a lista de Posts em User e iremos inserir
+uma REFERÊNCIA do User no Post, veja:
+
+![img_23.png](img_23.png)
+
 
 
 ### Controller
