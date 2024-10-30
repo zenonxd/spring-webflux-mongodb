@@ -296,6 +296,8 @@ uma REFERÊNCIA do User no Post, usando @DocumentReference! Veja:
 
 ## Alteração nos Endpoints
 
+Lembrar de baixar a Collection do Postman.
+
 ### User
 
 #### findAll
@@ -385,5 +387,170 @@ public ResponseEntity<UserDTO> findById(@PathVariable String id) {
 @GetMapping(value = "/{id}")
 public Mono<ResponseEntity<UserDTO>> findById(@PathVariable String id) {
     return service.findById(id).map(userDTO -> ResponseEntity.ok().body(userDTO));
+}
+```
+
+#### insert
+
+#### Service
+
+##### Antes
+
+```java
+@Transactional
+public UserDTO insert(UserDTO dto) {
+    User entity = new User();
+    copyDtoToEntity(dto, entity);
+    entity = repository.save(entity);
+    return new UserDTO(entity);
+}
+```
+
+##### Depois
+
+```java
+public Mono<UserDTO> insert(UserDTO dto) {
+    User entity = new User();
+    copyDtoToEntity(dto, entity);
+    return repository.save(entity).map(UserDTO::new);
+}
+```
+
+#### Controller
+
+Passamos um URIComponentsBuilder para inserir no created.
+
+##### Antes
+
+```java
+@PostMapping
+public ResponseEntity<UserDTO> insert(@RequestBody UserDTO dto) {
+    dto = service.insert(dto);
+    URI uri = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(dto.getId()).toUri();
+    return ResponseEntity.created(uri).body(dto);
+}
+```
+
+##### Depois
+
+```java
+@PostMapping
+public Mono<ResponseEntity<UserDTO>> insert(@RequestBody UserDTO userDTO,
+												UriComponentsBuilder builder) {
+    return service.insert(userDTO).map(userDTO1 ->
+            ResponseEntity.created(builder.path("/users/{id}").buildAndExpand(userDTO1.getId()).toUri())
+                    .body(userDTO1));
+}
+```
+
+#### update
+
+#### Service
+
+Usaremos o flatmap! Ele nos permite um merge, transformando uma ou mais streams em uma nova stream.
+
+##### Antes
+
+```java
+@Transactional
+public UserDTO update(String id, UserDTO dto) {
+    User entity = repository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Recurso não encontrado"));
+    copyDtoToEntity(dto, entity);
+    entity = repository.save(entity);
+    return new UserDTO(entity);
+}
+```
+
+##### Depois
+
+```java
+	public Mono<UserDTO> update(String id, UserDTO dto) {
+    return repository.findById(id)
+            .flatMap(exinstingUser -> {
+                //modificamos os dados do User que está no banco
+                exinstingUser.setName(dto.getName());
+                exinstingUser.setEmail(dto.getEmail());
+                return repository.save(exinstingUser);
+            })
+            //transformamos por fim em um Mono de UserDTO.
+            .map(UserDTO::new)
+            .switchIfEmpty(Mono.error(new ResourceNotFoundException("Recurso não encontrado")));
+}
+```
+
+### Controller
+
+##### Antes
+
+```java
+@PutMapping(value = "/{id}")
+public ResponseEntity<UserDTO> update(@PathVariable String id, @RequestBody UserDTO dto) {
+    dto = service.update(id, dto);
+    return ResponseEntity.ok(dto);
+}
+```
+
+##### Depois
+
+```java
+@PutMapping(value = "/{id}")
+public Mono<ResponseEntity<UserDTO>> update(@PathVariable String id,
+                                            @RequestBody UserDTO dto) {
+    return service.update(id, dto).map(userDTO -> ResponseEntity.ok().body(userDTO));
+}
+```
+
+#### delete
+
+#### Service
+
+
+##### Antes
+
+```java
+@Transactional
+public void delete(String id) {
+    User entity = repository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Recurso não encontrado"));
+    repository.delete(entity);
+}
+```
+
+##### Depois
+
+```java
+public Mono<Void> delete(String id) {
+    //verificamos se o User existe
+    //se ele não existir, lançará a exception
+    return repository.findById(id)
+            .switchIfEmpty(Mono.error(new ResourceNotFoundException("Recurso não encontrado")))
+            //se ele existir, ele vai retornar um Mono de User
+            //iremos transformar esse Mono de User em Void para deletar
+            //o usuário
+            .flatMap(existingUser -> repository.delete(existingUser));
+}
+```
+
+### Controller
+
+##### Antes
+
+```java
+@DeleteMapping(value = "/{id}")
+public ResponseEntity<Void> delete(@PathVariable String id) {
+    service.delete(id);
+    return ResponseEntity.noContent().build();
+}
+```
+
+##### Depois
+
+O then retorna um void, que é o que precisamos.
+
+```java
+	@DeleteMapping(value = "/{id}")
+public Mono<ResponseEntity<Void>> delete(@PathVariable String id) {
+    return service.delete(id).then(Mono.just(ResponseEntity.noContent().build()));
 }
 ```
