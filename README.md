@@ -280,7 +280,7 @@ Save retornará Mono do tipo User.
 
 ![img_20.png](img_20.png)
 
-### Relacioanamento de entidades (User e Post)
+### Relacionamento de entidades (User e Post)
 
 Na nossa entidade User, temos uma referência a Post, possuindo uma lista do mesmo. Visto que um User pode ter vários
 Posts.
@@ -290,12 +290,100 @@ Posts.
 No Webflux não é muito comum usarmos esse @DBRef.
 
 A ideia é que a referência seja feita de maneira manual. Nós iremos REMOVER a lista de Posts em User e iremos inserir
-uma REFERÊNCIA do User no Post, veja:
+uma REFERÊNCIA do User no Post, usando @DocumentReference! Veja:
 
 ![img_23.png](img_23.png)
 
+## Alteração nos Endpoints
 
+### User
+
+#### findAll
+
+#### Service
+
+##### Antes
+
+```java
+@Transactional(readOnly = true)
+public List<UserDTO> findAll() {
+    List<UserDTO> result = repository.findAll().stream().map(x -> new UserDTO(x)).toList();
+    return result;
+}
+```
+
+##### Depois
+
+```java
+public Flux<UserDTO> findAll() {
+    return repository.findAll().map(UserDTO::new);
+}
+```
 
 ### Controller
 
-### Service
+##### Antes
+
+```java
+@GetMapping
+public ResponseEntity<List<UserDTO>> findAll() {
+    List<UserDTO> list = service.findAll();
+    return ResponseEntity.ok().body(list);
+}
+```
+
+##### Depois
+
+```java
+@GetMapping
+public Flux<UserDTO> findAll() {
+    return service.findAll();
+}
+```
+
+#### findById
+
+❗Utilizamos o switchIfEmpty no service parar retornar uma exceção.
+
+#### Service
+
+##### Antes
+
+```java
+@Transactional(readOnly = true)
+public UserDTO findById(String id) {
+    User user = repository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Recurso não encontrado"));
+    return new UserDTO(user);
+}
+```
+
+##### Depois
+
+```java
+public Mono<UserDTO> findById(String id) {
+    return repository.findById(id)
+            .map(UserDTO::new)
+            .switchIfEmpty(Mono.error(new ResourceNotFoundException("ID não encontrado")));
+}
+```
+
+### Controller
+
+##### Antes
+
+```java
+@GetMapping(value = "/{id}")
+public ResponseEntity<UserDTO> findById(@PathVariable String id) {
+    UserDTO dto = service.findById(id);
+    return ResponseEntity.ok(dto);
+}
+```
+
+##### Depois
+
+```java
+@GetMapping(value = "/{id}")
+public Mono<ResponseEntity<UserDTO>> findById(@PathVariable String id) {
+    return service.findById(id).map(userDTO -> ResponseEntity.ok().body(userDTO));
+}
+```
