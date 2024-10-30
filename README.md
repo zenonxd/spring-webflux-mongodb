@@ -162,3 +162,40 @@ Trocaremos o Spring MVC da aplicação para Webflux.
 
 Temos a camada do Repository que fará a comunicação com o banco de dados. E o repository retornará um tipo de dado flux
 para o Controller (teremos o service no meio de campo para regras de negócio).
+
+## Configurando MongoDB
+
+Entrar em [Cloud MongoDB](https://cloud.mongodb.com) e se registrar.
+
+Ir em deploy cluster.
+
+Usaremos Google Cloud! O nome será google-cloud-webflux-mongo.
+
+Criar um user e colocar em Security o nosso IP (exclua o atual).
+
+Iremos para o MongoDB Compass (para visualizar o banco de dados).
+
+No site do Mongo, ir em connect e selecionar o Compass.
+
+![img_9.png](img_9.png)
+
+No MongoDB compass, conectar usando a connection string fornecida no site e passe a senha do user.
+
+Agora, conectaremos na IDE.
+
+Vá em application.properties, e troque pela url fornecida aqui:
+
+![img_10.png](img_10.png)
+
+Além disso, crie também uma database:
+
+![img_11.png](img_11.png)
+
+E depois, vá no MongoDB Compass > conexão > create database. Crie uma collection de user também (uma das entidades do
+projeto).
+
+![img_12.png](img_12.png)
+
+Iniciando o projeto, a ideia é que a Collection de user criada esteja mapeada com os dados do TestConfig.
+
+![img_13.png](img_13.png)
