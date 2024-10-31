@@ -735,4 +735,39 @@ como nulo.
 ![img_24.png](img_24.png)
 
 Veja que logo acima, nós salvamos os usuários instanciados. A ideia é que a gente busque novamente os dados do Usuário,
-voltando no banco de dados (repository) localizando seu ID auto incrementado.
+voltando no banco de dados (repository) localizando seu ID auto incrementado. 
+
+[Veja aqui toda a lógica dentro do método]()
+
+#### Repository
+
+##### User
+
+```java
+    @Query("{ 'email': { $regex: ?0, $options: 'i' } }")
+    Mono<User> searchEmail(String email);
+```
+
+##### Post
+
+```java
+	Flux<Post> findPostsByUserId(String id);
+```
+
+#### Service
+
+```java
+	public Flux<PostDTO> findPostsByUserId(String id) {
+		return repository.findPostsByUserId(id)
+				.map(PostDTO::new);
+	}
+```
+
+#### Controller
+
+```java
+	@GetMapping(value = "/user/{id}")
+	public Flux<PostDTO> findPostsByUserId(@PathVariable String id) {
+		return service.findPostsByUserId(id);
+	}
+```

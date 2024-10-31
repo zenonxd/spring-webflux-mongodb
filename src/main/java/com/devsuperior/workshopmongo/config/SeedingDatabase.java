@@ -25,29 +25,26 @@ public class SeedingDatabase implements CommandLineRunner {
 
 	@Override
 	public void run(String... args) throws Exception {
-		/*
-		userRepository.deleteAll();
-		postRepository.deleteAll();
-		*/
-
+		// Limpar dados dos repositórios
 		Mono<Void> deleteUsers = userRepository.deleteAll();
 		Mono<Void> deletePosts = postRepository.deleteAll();
 
+		// Usando 'then' para encadear a operação de deleção com a de inserção
 		deleteUsers.then(deletePosts).subscribe();
 
 		User maria = new User(null, "Maria Brown", "maria@gmail.com");
 		User alex = new User(null, "Alex Green", "alex@gmail.com");
 		User bob = new User(null, "Bob Grey", "bob@gmail.com");
 
-		/*userRepository.saveAll(Arrays.asList(maria, alex, bob));*/
+		// Inserindo usuários e encadeando operações para garantir que foram salvos antes de continuar
 		Flux<User> insertUsers = userRepository.saveAll(Arrays.asList(maria, alex, bob));
 
 		insertUsers
-				.thenMany(userRepository.findAll())
+				.thenMany(userRepository.findAll())// Confirmação que os usuários foram salvos
 				.doOnNext(user -> System.out.println("Usuário salvo: " + user))
 				.then(
 						Mono.defer(() -> {
-
+							// Agora que os usuários foram salvos, buscar por email para confirmar e usar os dados
 							Mono<User> mariaFromDb = userRepository.searchEmail("maria@gmail.com");
 							Mono<User> alexFromDb = userRepository.searchEmail("alex@gmail.com");
 							Mono<User> bobFromDb = userRepository.searchEmail("bob@gmail.com");
@@ -70,9 +67,11 @@ public class SeedingDatabase implements CommandLineRunner {
 					post1.addComment("Aproveite!", Instant.parse("2022-11-22T11:35:24.00Z"), bob.getId(), bob.getName());
 
 					post2.addComment("Tenha um ótimo dia!", Instant.parse("2022-11-23T18:35:24.00Z"), alex.getId(), alex.getName());
+					// Associando usuário aos posts
 
 					post1.setUser(mariaSaved);
 					post2.setUser(mariaSaved);
+					// Salvando posts
 
 					Flux<Post> insertPosts = postRepository.saveAll(Arrays.asList(post1, post2));
 					insertPosts.subscribe();
