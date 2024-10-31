@@ -103,6 +103,7 @@ public class Post {
 		this.user = user;
 	}
 
+
 	public void addComment(String CommentText, Instant commentDate, String authorId, String authorName) {
 		Comment comment = new Comment(CommentText, date, authorId, authorName);
 		comments.add(comment);

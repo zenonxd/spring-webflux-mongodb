@@ -9,6 +9,14 @@ diferenças entre Spring MVC e WebFlux.
 
 Implementar Back end reativo com Spring WebFlux e MongoDB.
 
+# Resumo
+
+Caso o cluster fique inativo, vá no Cloud do Mongo, dá um terminate e faça a conexão novamente no properties (a string)
+de conexão pode mudar.
+
+Não existe mais referência de entidades para o Banco de Dados (como colocar em User uma lista de Posts). Agora, nós
+fazemos a referência manual com @DocumentReference. [Veja](#relacionamento-de-entidades-user-e-post)
+
 # Introdução
 
 A principal motivação para o surgimento de aplicações reativas é a necessidade de escalar aplicações.
@@ -298,7 +306,7 @@ uma REFERÊNCIA do User no Post, usando @DocumentReference! Veja:
 
 Lembrar de baixar a Collection do Postman.
 
-### User
+## User
 
 #### findAll
 
@@ -554,3 +562,177 @@ public Mono<ResponseEntity<Void>> delete(@PathVariable String id) {
     return service.delete(id).then(Mono.just(ResponseEntity.noContent().build()));
 }
 ```
+
+## Post
+
+### findById
+
+#### Service
+
+##### Antes
+
+```java
+@Transactional(readOnly = true)
+public PostDTO findById(String id) {
+    Post post = repository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Recurso não encontrado"));
+    return new PostDTO(post);
+}
+```
+
+##### Depois
+
+```java
+public Mono<PostDTO> findById(String id) {
+    return repository.findById(id)
+            .map(PostDTO::new)
+            .switchIfEmpty(Mono.error(new ResourceNotFoundException("Recurso não encontrado")));
+}
+```
+
+#### Controller
+
+##### Antes
+
+```java
+@GetMapping(value = "/{id}")
+public ResponseEntity<PostDTO> findById(@PathVariable String id) {
+    PostDTO dto = service.findById(id);
+    return ResponseEntity.ok(dto);
+}
+```
+
+##### Depois
+
+```java
+@GetMapping(value = "/{id}")
+public Mono<ResponseEntity<PostDTO>> findById(@PathVariable String id) {
+    return service.findById(id).map(postDTO -> ResponseEntity.ok().body(postDTO));
+}
+```
+
+### findByTitle (Query method)
+
+#### Service
+
+##### Antes
+
+```java
+public List<PostDTO> findByTitle(String text) {
+    List<PostDTO> result = repository.searchTitle(text).stream().map(x -> new PostDTO(x)).toList();
+    return result;
+}
+```
+
+##### Depois
+
+```java
+public Flux<PostDTO> findByTitle(String text) {
+    Flux<Post> result;
+
+    if (text == null || text.isEmpty()) {
+        result = repository.findAll();
+    } else {
+        result = repository.findPostByTitleIgnoreCase(text);
+    }
+
+    return result.map(PostDTO::new);
+}
+```
+
+#### Controller
+
+##### Antes
+
+```java
+@GetMapping(value = "/titlesearch")
+public ResponseEntity<List<PostDTO>> findByTitle(@RequestParam(value = "text", defaultValue = "") String text) throws UnsupportedEncodingException {
+    text = URL.decodeParam(text);
+    List<PostDTO> list = service.findByTitle(text);
+    return ResponseEntity.ok(list);
+}
+```
+
+##### Depois
+
+```java
+@GetMapping(value = "/titlesearch")
+public Flux<PostDTO> findByTitle(@RequestParam(value = "text", defaultValue = "") String text) throws UnsupportedEncodingException {
+    text = URL.decodeParam(text);
+    return service.findByTitle(text);
+}
+```
+
+
+### fullSearch (Query method)
+
+#### Service
+
+##### Antes
+
+```java
+public List<PostDTO> fullSearch(String text, Instant minDate, Instant maxDate) {
+    maxDate = maxDate.plusSeconds(86400); // 24 * 60 * 60
+    List<PostDTO> result = repository.fullSearch(text, minDate, maxDate).stream().map(x -> new PostDTO(x)).toList();
+    return result;
+}
+```
+
+##### Depois
+
+```java
+public Flux<PostDTO> fullSearch(String text, Instant minDate, Instant maxDate) {
+    maxDate = maxDate.plusSeconds(86400); // 24 * 60 * 60
+    return repository.fullSearch(text, minDate, maxDate)
+            .map(PostDTO::new)
+            .switchIfEmpty(Mono.error(new ResourceNotFoundException("Recurso não encontrado")));
+}
+```
+
+#### Controller
+
+##### Antes
+
+```java
+@GetMapping(value = "/fullsearch")
+public ResponseEntity<List<PostDTO>> fullSearch(
+			@RequestParam(value = "text", defaultValue = "") String text,
+			@RequestParam(value = "minDate", defaultValue = "") String minDate,
+			@RequestParam(value = "maxDate", defaultValue = "") String maxDate) throws UnsupportedEncodingException, ParseException {
+		
+    text = URL.decodeParam(text);
+    Instant min = URL.convertDate(minDate, Instant.EPOCH);
+    Instant max = URL.convertDate(maxDate, Instant.now());
+		
+    List<PostDTO> list = service.fullSearch(text, min, max);
+    return ResponseEntity.ok(list);
+}
+```
+
+##### Depois
+
+```java
+@GetMapping(value = "/fullsearch")
+public Flux<PostDTO> fullSearch(
+			@RequestParam(value = "text", defaultValue = "") String text,
+			@RequestParam(value = "minDate", defaultValue = "") String minDate,
+			@RequestParam(value = "maxDate", defaultValue = "") String maxDate) throws UnsupportedEncodingException, ParseException {
+		
+    text = URL.decodeParam(text);
+    Instant min = URL.convertDate(minDate, Instant.EPOCH);
+    Instant max = URL.convertDate(maxDate, Instant.now());
+		
+    return service.fullSearch(text, min, max);
+}
+```
+
+### searchPostsByUser
+
+Iremos no SeedingDataBase (classe de config).
+
+Percebe-se que ao instanciar um post, passamos um user (maria) com o ``.getId``. O problema é que esse ID foi instanciado
+como nulo.
+
+![img_24.png](img_24.png)
+
+Veja que logo acima, nós salvamos os usuários instanciados. A ideia é que a gente busque novamente os dados do Usuário,
+voltando no banco de dados (repository) localizando seu ID auto incrementado.
